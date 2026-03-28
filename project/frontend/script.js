@@ -1,5 +1,3 @@
-const API_BASE_URL = 'http://localhost:3000/api';
-
 // Utility to parse URL params
 function getQueryParams() {
     const params = new URLSearchParams(window.location.search);
