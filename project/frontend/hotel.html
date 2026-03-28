@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hotel Details</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-light">
+    <div class="app-container pb-0">
+        <div style="position: relative;">
+            <a href="index.html" class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center" style="position: absolute; top: 20px; left: 20px; z-index: 10; width: 40px; height: 40px;">
+                <span class="fs-5 fw-bold" style="margin-top: -3px;">←</span>
+            </a>
+            <img id="hotel-img" src="" style="width: 100%; height: 350px; object-fit: cover;" alt="Hotel Image">
+        </div>
+        
+        <div class="p-4 bg-white" style="border-radius: 32px 32px 0 0; margin-top: -32px; position: relative; min-height: 500px; box-shadow: 0 -10px 20px rgba(0,0,0,0.1);">
+            <h3 id="hotel-name" class="fw-bold mb-1" style="color: var(--primary-color);">Loading...</h3>
+            <p class="text-muted small mb-3"><i class="text-danger">📍</i> <span id="hotel-location"></span></p>
+            <p class="text-warning fw-bold mb-4 fs-5">⭐ <span id="hotel-rating"></span>/5</p>
+
+            <ul class="nav nav-tabs border-bottom-0 mb-3" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-bold px-0 me-4" style="color:var(--text-main); border:none; border-bottom: 3px solid var(--primary-color); background:transparent;">Details</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-bold px-0 text-muted" style="border:none; background:transparent;">Review</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="myTabContent">
+                <div class="tab-pane fade show active" id="details" role="tabpanel">
+                    <p id="hotel-desc" class="text-muted mt-3" style="line-height: 1.8;"></p>
+                </div>
+            </div>
+            
+        </div>
+
+        <div class="bottom-bar d-flex justify-content-center">
+            <button id="book-btn" class="btn-primary-custom shadow-lg">Book a Table</button>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', initHotel);</script>
+</body>
+</html>

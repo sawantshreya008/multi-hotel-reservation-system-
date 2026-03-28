@@ -1,0 +1,159 @@
+:root {
+    --primary-color: #d81b60;
+    --primary-hover: #c2185b;
+    --bg-color: #f7f8f9;
+    --text-main: #333333;
+    --text-muted: #888888;
+}
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+}
+
+/* App Container for mobile feel on desktop */
+.app-container {
+    max-width: 480px;
+    margin: 0 auto;
+    background: white;
+    min-height: 100vh;
+    box-shadow: 0 0 20px rgba(0,0,0,0.05);
+    position: relative;
+    padding-bottom: 80px;
+}
+
+.top-bar {
+    display: flex;
+    align-items: center;
+    padding: 20px;
+    background: white;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.back-btn {
+    text-decoration: none;
+    color: var(--text-main);
+    font-size: 1.2rem;
+    margin-right: 15px;
+}
+
+.top-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.hotel-card {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    cursor: pointer;
+    transition: transform 0.2s;
+    background: white;
+}
+.hotel-card:hover {
+    transform: translateY(-3px);
+}
+.hotel-img {
+    height: 200px;
+    object-fit: cover;
+    width: 100%;
+}
+
+.btn-primary-custom {
+    background-color: var(--primary-color);
+    border: none;
+    color: white;
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 600;
+    width: 100%;
+    transition: background 0.3s;
+}
+.btn-primary-custom:hover {
+    background-color: var(--primary-hover);
+    color: white;
+}
+.btn-outline-custom {
+    border: 1px solid var(--primary-color);
+    color: var(--primary-color);
+    background: transparent;
+    border-radius: 12px;
+    padding: 12px;
+    font-weight: 600;
+    width: 100%;
+}
+
+.bottom-bar {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    max-width: 480px;
+    background: white;
+    padding: 15px 20px;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.05);
+    z-index: 100;
+}
+
+/* Floor plan styles */
+.floor-plan {
+    padding: 20px;
+    background: #fdfdfd;
+    min-height: 500px;
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 40px;
+    justify-content: center;
+    align-items: center;
+}
+
+.restaurant-table {
+    position: relative;
+    background: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: #666;
+    margin: 30px;
+}
+.table-circular {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+}
+.table-rectangle {
+    width: 100px;
+    height: 60px;
+    border-radius: 8px;
+}
+
+.chair {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: #dddddd;
+    position: absolute;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid white;
+}
+.chair.available {
+    background: #e0e0e0;
+}
+.chair.booked {
+    background: #ffcccc!important;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.chair.selected {
+    background: var(--primary-color)!important;
+    transform: scale(1.1);
+    box-shadow: 0 0 8px rgba(216, 27, 96, 0.4);
+}

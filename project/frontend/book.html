@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book a Table</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-light">
+    <div class="app-container">
+        <div class="top-bar border-bottom">
+            <a href="javascript:history.back()" class="back-btn fs-4 fw-bold pb-1">←</a>
+            <h5 class="top-title w-100 text-center pe-4 m-0">Book a table</h5>
+        </div>
+        
+        <div class="p-4">
+            <div class="d-flex align-items-center mb-4 bg-white p-3 rounded-4 shadow-sm">
+                <div class="bg-light rounded-circle p-3 me-3 fs-4 d-flex justify-content-center align-items-center" style="width: 50px; height: 50px;">🍽️</div>
+                <div>
+                    <h6 id="hotel-name" class="fw-bold m-0 text-truncate" style="color: var(--primary-color);">Restaurant Name</h6>
+                    <small class="text-muted">Table booking</small>
+                </div>
+            </div>
+            
+            <h6 class="fw-bold mb-3 text-secondary">📅 Date & Time</h6>
+            <div class="bg-white p-4 rounded-4 shadow-sm mb-4 text-center">
+                <input type="date" id="res-date" class="form-control border-0 bg-light text-center fw-bold fs-5 mb-4 py-3 rounded-3" style="color:var(--primary-color)">
+                
+                <h6 class="text-muted small text-start mb-2">Select Time Slot</h6>
+                <div class="d-flex justify-content-center">
+                    <select id="res-time" class="form-select border-0 bg-light text-center fw-bold fs-5 py-3 rounded-3 shadow-none">
+                        <option value="morning">11 : 45 AM (Morning)</option>
+                        <option value="afternoon">02 : 30 PM (Afternoon)</option>
+                        <option value="evening">08 : 00 PM (Evening)</option>
+                    </select>
+                </div>
+            </div>
+
+            <h6 class="fw-bold mb-3 text-secondary">👥 Guest</h6>
+            <div class="bg-white p-3 rounded-4 shadow-sm mb-4 d-flex justify-content-between align-items-center">
+                <button id="btn-minus" class="btn btn-light rounded-circle fw-bold fs-4 d-flex justify-content-center align-items-center" style="width: 45px; height: 45px; color: var(--primary-color);">-</button>
+                <span class="fw-bold fs-5"><span id="guest-count">2</span> Guest</span>
+                <button id="btn-plus" class="btn btn-light rounded-circle fw-bold fs-4 d-flex justify-content-center align-items-center" style="width: 45px; height: 45px; background-color: var(--primary-color); color: white;">+</button>
+            </div>
+            
+            <div class="d-flex gap-3 mt-5 pb-4">
+                <button class="btn-outline-custom bg-white shadow-sm" onclick="history.back()">Cancel</button>
+                <button id="confirm-btn" class="btn-primary-custom shadow">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+    <script>document.addEventListener('DOMContentLoaded', initBook);</script>
+</body>
+</html>
