@@ -485,6 +485,10 @@ body {
 .text-warning {
     color: var(--primary-color) !important;
 }
+.booking-meta,
+#history-results strong {
+    color: var(--text-main) !important;
+}
 .btn-light {
     background: #1a1a1a !important;
     color: var(--text-main) !important;
