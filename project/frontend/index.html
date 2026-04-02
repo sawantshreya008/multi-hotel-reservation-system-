@@ -9,21 +9,22 @@
 </head>
 <body class="bg-light">
     <div class="app-container">
-        <div class="top-bar border-bottom">
-            <h1 class="top-title w-100 text-center" style="color: var(--primary-color);">Discover Hotels</h1>
-        </div>
-        <div class="p-4">
-            <div class="d-flex justify-content-between mb-3 align-items-center">
-                <h4 class="fw-bold m-0">Top Rated</h4>
-                <a href="history.html" class="text-decoration-none fw-bold shadow-sm px-3 py-1 rounded bg-white" style="color:var(--primary-color)">My Bookings</a>
+        <section class="hero">
+            <div class="hero-content">
+                <div class="hero-brand">BlackGold Dining</div>
+                <h1 class="mb-3">Find the Perfect Table for Your Next Meal</h1>
+                <p class="hero-subtitle">Explore top restaurants and book your seats instantly.</p>
+                <a href="hotels.html" class="btn-primary-custom hero-cta">View the Restaurants</a>
             </div>
-            <div id="hotels-list">
-               <div class="text-center mt-5"><div class="spinner-border" style="color:var(--primary-color)"></div></div>
-            </div>
-        </div>
+        </section>
     </div>
+    <nav class="bottom-nav">
+        <a href="index.html" class="active">Home</a>
+        <a href="hotels.html">Search</a>
+        <a href="history.html">Bookings</a>
+        <a href="profile.html">Profile</a>
+    </nav>
     <script src="config.js"></script>
     <script src="script.js"></script>
-    <script>document.addEventListener('DOMContentLoaded', initIndex);</script>
 </body>
 </html>

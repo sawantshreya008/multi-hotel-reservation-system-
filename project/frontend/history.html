@@ -18,11 +18,11 @@
             <form onsubmit="fetchHistory(event)" class="bg-white p-4 rounded-4 shadow-sm mb-4 border">
                 <p class="small text-muted mb-4 fw-bold text-center">Enter your details to trace your past or upcoming reservations.</p>
                 <div class="mb-3">
-                    <input type="text" id="h-name" class="form-control bg-light border-0 py-3 rounded-3" placeholder="Full Name">
+                    <input type="text" id="h-name" class="form-control input-field bg-light border-0 py-3 rounded-3" placeholder="Full Name">
                 </div>
                 <div class="mb-3 text-center text-muted small fw-bold">OR</div>
                 <div class="mb-4">
-                    <input type="tel" id="h-phone" class="form-control bg-light border-0 py-3 rounded-3" placeholder="Phone Number">
+                    <input type="tel" id="h-phone" class="form-control input-field bg-light border-0 py-3 rounded-3" placeholder="Phone Number">
                 </div>
                 <button type="submit" class="btn-primary-custom shadow position-relative mt-2">Find Bookings</button>
             </form>
@@ -32,6 +32,12 @@
             </div>
         </div>
     </div>
+    <nav class="bottom-nav">
+        <a href="index.html">Home</a>
+        <a href="index.html#search">Search</a>
+        <a href="history.html" class="active">Bookings</a>
+        <a href="profile.html">Profile</a>
+    </nav>
     
     <script src="config.js"></script>
     <script src="script.js"></script>

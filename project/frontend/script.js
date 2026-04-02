@@ -25,15 +25,22 @@ async function initIndex() {
         const container = document.getElementById('hotels-list');
         container.innerHTML = '';
         hotels.forEach(h => {
+            const rating = h.rating || '4.8';
+            const price = h.price_per_night ? `$${h.price_per_night}/night` : '';
+            const fallbackImg = 'https://images.unsplash.com/photo-1551882547-ff40c0d5b9af?w=800';
             container.innerHTML += `
                 <div class="hotel-card" onclick="location.href='hotel.html?id=${h.id}'">
-                    <img src="${h.image_url || 'https://images.unsplash.com/photo-1551882547-ff40c0d5b9af?w=800'}" class="hotel-img" alt="${h.name}">
-                    <div class="p-3">
+                    <div class="hotel-img-wrap">
+                        <img src="${h.image_url || fallbackImg}" class="hotel-img" alt="${h.name}" onerror="this.src='${fallbackImg}'">
+                        <span class="wishlist-badge" aria-hidden="true">&hearts;</span>
+                        <span class="rating-pill">${rating} / 5</span>
+                    </div>
+                    <div class="hotel-card-body">
                         <h5 class="fw-bold mb-1">${h.name}</h5>
-                        <p class="text-muted small mb-2"><i class="text-danger">📍</i> ${h.location}</p>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="text-warning fw-bold">⭐ ${h.rating}/5</span>
-                            <span class="text-primary fw-bold" style="color:var(--primary-color)!important">View Details →</span>
+                        <p class="text-muted small mb-2">${h.location}</p>
+                        <div class="hotel-card-actions">
+                            <span class="text-muted small">${price}</span>
+                            <button class="btn-outline-inline" type="button">View Details</button>
                         </div>
                     </div>
                 </div>
@@ -234,10 +241,10 @@ async function fetchHistory(e) {
     
     data.forEach(r => {
         div.innerHTML += `
-            <div class="card mb-3 border-0 shadow-sm" style="border-radius: 12px;">
+            <div class="card mb-3">
                 <div class="card-body">
                     <h5 class="fw-bold" style="color:var(--primary-color)">${r.hotel_name}</h5>
-                    <p class="mb-2 text-muted small"><i class="text-danger">📍</i> ${r.location}</p>
+                    <p class="mb-2 text-muted small">${r.location}</p>
                     <div class="d-flex justify-content-between bg-light p-2 rounded">
                         <div>
                             <div class="small text-muted">Date</div>
@@ -257,3 +264,27 @@ async function fetchHistory(e) {
         `;
     });
 }
+
+function initBackNav() {
+    const path = window.location.pathname.toLowerCase();
+    if (path.endsWith('index.html') || path.endsWith('/')) {
+        return;
+    }
+
+    const backBtn = document.createElement('a');
+    backBtn.className = 'back-fab';
+    backBtn.href = 'index.html';
+    backBtn.setAttribute('aria-label', 'Back');
+    backBtn.textContent = '←';
+    backBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (window.history.length > 1) {
+            window.history.back();
+        } else {
+            window.location.href = 'index.html';
+        }
+    });
+    document.body.appendChild(backBtn);
+}
+
+document.addEventListener('DOMContentLoaded', initBackNav);

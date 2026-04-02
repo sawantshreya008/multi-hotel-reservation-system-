@@ -9,11 +9,15 @@
 </head>
 <body class="bg-light">
     <div class="app-container pb-0">
+        <div class="top-bar border-bottom">
+            <a href="index.html" class="back-btn fs-4 fw-bold pb-1">←</a>
+            <h5 class="top-title w-100 text-center pe-4 m-0">Hotel Details</h5>
+        </div>
         <div style="position: relative;">
-            <a href="index.html" class="btn btn-light rounded-circle shadow-sm d-flex justify-content-center align-items-center" style="position: absolute; top: 20px; left: 20px; z-index: 10; width: 40px; height: 40px;">
+            <a href="index.html" class="lux-btn rounded-circle shadow-sm d-flex justify-content-center align-items-center" style="position: absolute; top: 20px; left: 20px; z-index: 10; width: 40px; height: 40px;">
                 <span class="fs-5 fw-bold" style="margin-top: -3px;">←</span>
             </a>
-            <img id="hotel-img" src="" style="width: 100%; height: 350px; object-fit: cover;" alt="Hotel Image">
+            <img id="hotel-img" src="" style="width: 100%; height: 350px; object-fit: cover; object-position: center;" alt="Hotel Image">
         </div>
         
         <div class="p-4 bg-white" style="border-radius: 32px 32px 0 0; margin-top: -32px; position: relative; min-height: 500px; box-shadow: 0 -10px 20px rgba(0,0,0,0.1);">
@@ -41,6 +45,12 @@
             <button id="book-btn" class="btn-primary-custom shadow-lg">Book a Table</button>
         </div>
     </div>
+    <nav class="bottom-nav">
+        <a href="index.html">Home</a>
+        <a href="index.html#search">Search</a>
+        <a href="history.html">Bookings</a>
+        <a href="profile.html">Profile</a>
+    </nav>
     
     <script src="config.js"></script>
     <script src="script.js"></script>
