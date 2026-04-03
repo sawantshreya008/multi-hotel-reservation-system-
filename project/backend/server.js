@@ -26,6 +26,7 @@ app.get('/api/hotels', async (req, res) => {
         const [rows] = await promisePool.query('SELECT * FROM hotels');
         res.json(rows);
     } catch (e) {
+        console.error(e);
         res.status(500).json({ message: 'Error fetching hotels' });
     }
 });
@@ -37,6 +38,7 @@ app.get('/api/hotels/:id', async (req, res) => {
         if(rows.length === 0) return res.status(404).json({ message: 'Not found' });
         res.json(rows[0]);
     } catch (e) {
+        console.error(e);
         res.status(500).json({ message: 'Error fetching hotel' });
     }
 });
@@ -55,10 +57,10 @@ app.get('/api/seats', async (req, res) => {
             [date, time_slot]
         );
 
-        const reservedSeatIds = reservations.map(r => r.seat_id);
+        const reservedSeatIds = new Set(reservations.map(r => r.seat_id));
         const seatsWithStatus = seats.map(s => ({
             ...s,
-            isAvailable: !reservedSeatIds.includes(s.id)
+            isAvailable: !reservedSeatIds.has(s.id)
         }));
 
         res.json(seatsWithStatus);
@@ -70,31 +72,57 @@ app.get('/api/seats', async (req, res) => {
 
 // Book a seat
 app.post('/api/book', async (req, res) => {
+    let connection;
     try {
-        const { seat_id, customer_name, phone_number, special_request, date, time_slot } = req.body;
-        if (!seat_id || !customer_name || !date || !time_slot) {
+        const { seat_id, seat_ids, customer_name, phone_number, special_request, date, time_slot } = req.body;
+        const normalizedSeatIds = Array.isArray(seat_ids)
+            ? [...new Set(seat_ids.map(Number).filter(Boolean))]
+            : [Number(seat_id)].filter(Boolean);
+
+        if (normalizedSeatIds.length === 0 || !customer_name || !date || !time_slot) {
             return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        const [existing] = await promisePool.query(
-            'SELECT * FROM reservations WHERE seat_id = ? AND date = ? AND time_slot = ?',
-            [seat_id, date, time_slot]
+        connection = await promisePool.getConnection();
+        await connection.beginTransaction();
+
+        const placeholders = normalizedSeatIds.map(() => '?').join(',');
+        const [existing] = await connection.query(
+            `SELECT seat_id FROM reservations WHERE seat_id IN (${placeholders}) AND date = ? AND time_slot = ?`,
+            [...normalizedSeatIds, date, time_slot]
         );
 
         if (existing.length > 0) {
+            await connection.rollback();
             return res.status(409).json({ message: 'Seat already booked' });
         }
 
-        const [result] = await promisePool.query(
-            'INSERT INTO reservations (seat_id, customer_name, phone_number, special_request, date, time_slot) VALUES (?, ?, ?, ?, ?, ?)',
-            [seat_id, customer_name, phone_number || '', special_request || '', date, time_slot]
-        );
+        for (const currentSeatId of normalizedSeatIds) {
+            await connection.query(
+                'INSERT INTO reservations (seat_id, customer_name, phone_number, special_request, date, time_slot) VALUES (?, ?, ?, ?, ?, ?)',
+                [currentSeatId, customer_name, phone_number || '', special_request || '', date, time_slot]
+            );
+        }
 
-        res.status(201).json({ message: 'Booked successfully' });
+        await connection.commit();
+
+        res.status(201).json({
+            message: 'Booked successfully',
+            booked_seat_count: normalizedSeatIds.length
+        });
     } catch (e) {
+        if (connection) {
+            try {
+                await connection.rollback();
+            } catch (rollbackError) {
+                console.error(rollbackError);
+            }
+        }
         if (e.code === 'ER_DUP_ENTRY') return res.status(409).json({ message: 'Seat already booked' });
         console.error(e);
         res.status(500).json({ message: 'Error booking seat' });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
@@ -124,6 +152,49 @@ app.get('/api/history', async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'Error fetching history' });
+    }
+});
+
+// Cancel reservation(s)
+app.post('/api/cancel', async (req, res) => {
+    let connection;
+    try {
+        const { reservation_ids } = req.body;
+        const ids = Array.isArray(reservation_ids)
+            ? [...new Set(reservation_ids.map(Number).filter(Boolean))]
+            : [];
+
+        if (ids.length === 0) {
+            return res.status(400).json({ message: 'reservation_ids is required' });
+        }
+
+        connection = await promisePool.getConnection();
+        await connection.beginTransaction();
+
+        const placeholders = ids.map(() => '?').join(',');
+        const [result] = await connection.query(
+            `DELETE FROM reservations WHERE id IN (${placeholders})`,
+            ids
+        );
+
+        await connection.commit();
+
+        res.json({
+            message: 'Reservation cancelled successfully',
+            deleted_count: result.affectedRows || 0
+        });
+    } catch (e) {
+        if (connection) {
+            try {
+                await connection.rollback();
+            } catch (rollbackError) {
+                console.error(rollbackError);
+            }
+        }
+        console.error(e);
+        res.status(500).json({ message: 'Error cancelling reservation' });
+    } finally {
+        if (connection) connection.release();
     }
 });
 
