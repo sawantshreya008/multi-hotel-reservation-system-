@@ -26,14 +26,19 @@
             <h6 class="fw-bold mb-3 text-secondary">📅 Date & Time</h6>
             <div class="bg-white p-4 rounded-4 shadow-sm mb-4 text-center">
                 <input type="date" id="res-date" class="form-control input-field border-0 bg-light text-center fw-bold fs-5 mb-4 py-3 rounded-3" style="color:var(--primary-color)">
+                <div class="text-start mb-4">
+                    <button type="button" id="open-date-picker" class="btn-outline-inline">Open Calendar</button>
+                </div>
                 
-                <h6 class="text-muted small text-start mb-2">Select Time Slot</h6>
+                <h6 class="text-muted small text-start mb-2">Select Preferred Time</h6>
                 <div class="d-flex justify-content-center">
-                    <select id="res-time" class="form-select input-field border-0 bg-light text-center fw-bold fs-5 py-3 rounded-3 shadow-none">
-                        <option value="morning">11 : 45 AM (Morning)</option>
-                        <option value="afternoon">02 : 30 PM (Afternoon)</option>
-                        <option value="evening">08 : 00 PM (Evening)</option>
-                    </select>
+                    <input type="time" id="res-time" step="900" min="11:00" max="23:00" class="form-control input-field border-0 bg-light text-center fw-bold fs-5 py-3 rounded-3 shadow-none" style="max-width: 320px; color:var(--primary-color)">
+                </div>
+                <div class="text-start mt-3">
+                    <button type="button" id="open-time-picker" class="btn-outline-inline">Open Time Picker</button>
+                </div>
+                <div class="small text-muted mt-3 text-start">
+                    Service hours: 11:00 AM - 4:00 PM and 6:00 PM - 11:00 PM
                 </div>
             </div>
 

@@ -144,6 +144,11 @@ body {
     color: var(--text-muted);
     max-width: 520px;
     margin-bottom: 22px;
+    font-size: clamp(1rem, 1.6vw, 1.2rem);
+    letter-spacing: 0.2px;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
 }
 .hero-brand {
     font-size: clamp(2.8rem, 5vw, 4.6rem);
@@ -164,20 +169,10 @@ body {
     letter-spacing: 0.4px;
     text-shadow: 0 10px 30px rgba(0,0,0,0.6);
 }
-.hero-subtitle {
-    font-size: clamp(1rem, 1.6vw, 1.2rem);
-    letter-spacing: 0.2px;
-}
-
 @keyframes shimmer {
     0% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
     100% { background-position: 0% 50%; }
-}
-.hero-subtitle {
-    text-align: center;
-    margin-left: auto;
-    margin-right: auto;
 }
 .hero-cta {
     max-width: 360px;
@@ -422,6 +417,102 @@ body {
     box-shadow: var(--shadow-soft);
 }
 
+.selection-summary-card {
+    background: rgba(24,24,24,0.88);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 12px 14px;
+}
+
+.selection-summary-head {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 6px;
+}
+
+.selection-hint-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.selected-seat-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.seat-tag {
+    background: rgba(212,175,55,0.15);
+    border: 1px solid rgba(212,175,55,0.45);
+    color: var(--primary-color);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.8rem;
+}
+
+.recommendation-panel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.recommendation-head {
+    width: 100%;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.table-suggestion-card {
+    border: 1px solid rgba(212,175,55,0.55);
+    background: rgba(212,175,55,0.1);
+    color: var(--primary-color);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.table-suggestion-card:hover {
+    background: var(--primary-color);
+    color: #000;
+}
+
+.table-suggestion-card.combo {
+    border-style: dashed;
+}
+
+.table-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.table-meta {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+}
+
+.table-auto-btn {
+    border: 1px solid var(--border-color);
+    background: rgba(255,255,255,0.03);
+    color: var(--text-main);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 0.75rem;
+}
+
+.table-auto-btn:hover {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
 .restaurant-table {
     position: relative;
     background: #232323;
@@ -469,12 +560,6 @@ body {
     box-shadow: 0 0 10px rgba(212,175,55,0.45);
 }
 
-/* Custom font for restaurant names */
-.hotel-card-body h5,
-#hotel-name {
-    font-family: 'Playfair Display', serif;
-}
-
 /* Global overrides for bootstrap utility colors */
 .bg-light {
     background: var(--bg-color) !important;
@@ -490,6 +575,10 @@ body {
 }
 .text-warning {
     color: var(--primary-color) !important;
+}
+.booking-meta,
+#history-results strong {
+    color: var(--text-main) !important;
 }
 .btn-light {
     background: #1a1a1a !important;

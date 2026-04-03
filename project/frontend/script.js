@@ -2,7 +2,7 @@ const API_BASE_URL = 'http://localhost:3000/api';
 
 // Utility to parse URL params
 function getQueryParams() {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(globalThis.location.search);
     let obj = {};
     for (const [key, value] of params.entries()) {
         obj[key] = decodeURIComponent(value);
@@ -17,6 +17,71 @@ function saveBookingState(data) {
 }
 function getBookingState() {
     return JSON.parse(localStorage.getItem('bookingState') || '{}');
+}
+
+const SERVICE_WINDOWS = [
+    { start: '11:00', end: '16:00' },
+    { start: '18:00', end: '23:00' }
+];
+
+function timeToMinutes(timeStr) {
+    if (!timeStr?.includes(':')) return Number.NaN;
+    const [h, m] = timeStr.split(':').map(Number);
+    if (Number.isNaN(h) || Number.isNaN(m)) return Number.NaN;
+    return (h * 60) + m;
+}
+
+function isTimeWithinServiceHours(timeStr) {
+    const minutes = timeToMinutes(timeStr);
+    if (Number.isNaN(minutes)) return false;
+
+    return SERVICE_WINDOWS.some(window => {
+        const start = timeToMinutes(window.start);
+        const end = timeToMinutes(window.end);
+        return minutes >= start && minutes <= end;
+    });
+}
+
+function getDefaultBookingTime() {
+    const now = new Date();
+    const nowMinutes = (now.getHours() * 60) + now.getMinutes();
+    const roundedMinutes = Math.ceil(nowMinutes / 15) * 15;
+
+    for (const window of SERVICE_WINDOWS) {
+        const start = timeToMinutes(window.start);
+        const end = timeToMinutes(window.end);
+        if (roundedMinutes <= start) return window.start;
+        if (roundedMinutes >= start && roundedMinutes <= end) {
+            const clamped = Math.min(roundedMinutes, end);
+            const h = String(Math.floor(clamped / 60)).padStart(2, '0');
+            const m = String(clamped % 60).padStart(2, '0');
+            return `${h}:${m}`;
+        }
+    }
+
+    return SERVICE_WINDOWS[0].start;
+}
+
+function formatBookingTimeForDisplay(timeValue) {
+    if (!timeValue) return 'N/A';
+
+    const labelMap = {
+        morning: 'Morning',
+        afternoon: 'Afternoon',
+        evening: 'Evening'
+    };
+    if (labelMap[timeValue]) return labelMap[timeValue];
+
+    if (!timeValue.includes(':')) return timeValue;
+
+    const [hhRaw, mmRaw] = timeValue.split(':');
+    const hh = Number(hhRaw);
+    const mm = Number(mmRaw);
+    if (Number.isNaN(hh) || Number.isNaN(mm)) return timeValue;
+
+    const suffix = hh >= 12 ? 'PM' : 'AM';
+    const hour12 = (hh % 12) || 12;
+    return `${hour12}:${String(mm).padStart(2, '0')} ${suffix}`;
 }
 
 // Page 1: index.html
@@ -60,7 +125,10 @@ async function initIndex() {
 // Page 2: hotel.html
 async function initHotel() {
     const { id } = getQueryParams();
-    if(!id) return location.href="index.html";
+    if(!id) {
+        globalThis.location.href = 'index.html';
+        return;
+    }
     
     // Always make the button clickable
     document.getElementById('book-btn').onclick = () => {
@@ -100,6 +168,24 @@ function initBook() {
     dateInput.min = new Date().toISOString().split('T')[0];
     dateInput.value = dateInput.min;
 
+    const timeInput = document.getElementById('res-time');
+    timeInput.value = getDefaultBookingTime();
+
+    const openNativePicker = (inputEl) => {
+        if (!inputEl) return;
+        if (typeof inputEl.showPicker === 'function') {
+            inputEl.showPicker();
+        } else {
+            inputEl.focus();
+            inputEl.click();
+        }
+    };
+
+    const openDateBtn = document.getElementById('open-date-picker');
+    const openTimeBtn = document.getElementById('open-time-picker');
+    if (openDateBtn) openDateBtn.onclick = () => openNativePicker(dateInput);
+    if (openTimeBtn) openTimeBtn.onclick = () => openNativePicker(timeInput);
+
     let guests = 2;
     const guestSpan = document.getElementById('guest-count');
     document.getElementById('btn-minus').onclick = () => { if(guests > 1) { guests--; guestSpan.textContent = guests; } };
@@ -107,8 +193,11 @@ function initBook() {
     
     document.getElementById('confirm-btn').onclick = () => {
         const date = dateInput.value;
-        const time = document.getElementById('res-time').value;
+        const time = timeInput.value;
         if(!date || !time) return alert('Select date and time');
+        if(!isTimeWithinServiceHours(time)) {
+            return alert('Please choose a time between 11:00 AM - 4:00 PM or 6:00 PM - 11:00 PM.');
+        }
         
         saveBookingState({ date, time_slot: time, guests });
         location.href = `seats.html`;
@@ -116,12 +205,27 @@ function initBook() {
 }
 
 // Page 4: seats.html
+let seatSelectionState = {
+    guestCount: 1,
+    selectedSeatIds: [],
+    seatById: {},
+    chairBySeatId: {},
+    tableByNumber: {},
+    tableElsByNumber: {}
+};
+
 async function initSeats() {
     const state = getBookingState();
-    if(!state.hotel_id) return location.href="index.html";
+    if(!state.hotel_id) {
+        globalThis.location.href = 'index.html';
+        return;
+    }
     
-    document.getElementById('header-title').textContent = `${state.hotel_name} • ${state.date} • ${state.time_slot}`;
+    seatSelectionState.guestCount = Number(state.guests) || 1;
+    const timeText = formatBookingTimeForDisplay(state.time_slot);
+    document.getElementById('header-title').textContent = `${state.hotel_name} • ${state.date} • ${timeText}`;
     document.getElementById('seats-loading').classList.remove('d-none');
+    updateSelectionSummary();
     
     try {
         const res = await fetch(`${API_BASE_URL}/seats?hotel_id=${state.hotel_id}&date=${state.date}&time_slot=${state.time_slot}`);
@@ -129,40 +233,90 @@ async function initSeats() {
         
         document.getElementById('seats-loading').classList.add('d-none');
         
-        // Render Tables
         const tablesMap = {};
+        seatSelectionState.seatById = {};
+        seatSelectionState.chairBySeatId = {};
+        seatSelectionState.tableByNumber = {};
+        seatSelectionState.tableElsByNumber = {};
+        seatSelectionState.selectedSeatIds = [];
+
         seats.forEach(s => {
-            if(!tablesMap[s.table_number]) tablesMap[s.table_number] = { shape: s.shape, capacity: s.capacity, seats: [] };
+            seatSelectionState.seatById[s.id] = s;
+            if(!tablesMap[s.table_number]) {
+                tablesMap[s.table_number] = {
+                    tableNumber: s.table_number,
+                    shape: s.shape,
+                    capacity: s.capacity,
+                    seats: []
+                };
+            }
             tablesMap[s.table_number].seats.push(s);
         });
 
-        const floor = document.getElementById('floor-plan');
-        floor.innerHTML = '';
-
         Object.keys(tablesMap).forEach(tNum => {
-            const t = tablesMap[tNum];
-            const tableDiv = document.createElement('div');
-            tableDiv.className = `restaurant-table table-${t.shape}`;
-            
-            // Add chairs
-            t.seats.forEach((seat, idx) => {
-                const chair = document.createElement('div');
-                chair.className = `chair ${seat.isAvailable ? 'available' : 'booked'}`;
-                // Position magic
-                positionChair(chair, t.shape, idx, t.capacity);
-                
-                if(seat.isAvailable) {
-                    chair.onclick = () => selectSeat(chair, seat);
-                }
-                tableDiv.appendChild(chair);
-            });
-
-            floor.appendChild(tableDiv);
+            const table = tablesMap[tNum];
+            table.availableSeats = table.seats.filter(s => s.isAvailable);
+            seatSelectionState.tableByNumber[tNum] = table;
         });
-    } catch(e) { console.error(e); }
+
+        renderRecommendationPanel();
+        renderFloorPlan();
+        updateSelectionSummary();
+    } catch(e) {
+        console.error(e);
+    }
 }
 
-let selectedSeatObj = null;
+function renderFloorPlan() {
+    const floor = document.getElementById('floor-plan');
+    floor.innerHTML = '';
+
+    const orderedTableNumbers = Object.keys(seatSelectionState.tableByNumber)
+        .map(Number)
+        .sort((a, b) => a - b);
+
+    orderedTableNumbers.forEach(tNum => {
+        const t = seatSelectionState.tableByNumber[tNum];
+
+        const tableWrap = document.createElement('div');
+        tableWrap.className = 'table-wrap';
+        tableWrap.dataset.tableNumber = String(tNum);
+
+        const tableMeta = document.createElement('div');
+        tableMeta.className = 'table-meta';
+        tableMeta.innerHTML = `<strong>Table ${tNum}</strong> • ${t.availableSeats.length}/${t.capacity} available`;
+        tableWrap.appendChild(tableMeta);
+
+        const autoBtn = document.createElement('button');
+        autoBtn.type = 'button';
+        autoBtn.className = 'table-auto-btn';
+        autoBtn.textContent = 'Pick from this table';
+        autoBtn.onclick = () => autoSelectFromTable(tNum);
+        tableWrap.appendChild(autoBtn);
+
+        const tableDiv = document.createElement('div');
+        tableDiv.className = `restaurant-table table-${t.shape}`;
+        seatSelectionState.tableElsByNumber[tNum] = tableDiv;
+
+        const sortedSeats = [...t.seats].sort((a, b) => a.seat_number - b.seat_number);
+        sortedSeats.forEach((seat, idx) => {
+            const chair = document.createElement('div');
+            chair.className = `chair ${seat.isAvailable ? 'available' : 'booked'}`;
+            chair.setAttribute('title', `Table ${seat.table_number}, Seat ${seat.seat_number}`);
+            positionChair(chair, t.shape, idx, t.capacity);
+
+            if(seat.isAvailable) {
+                chair.onclick = () => toggleSeat(seat.id);
+            }
+
+            seatSelectionState.chairBySeatId[seat.id] = chair;
+            tableDiv.appendChild(chair);
+        });
+
+        tableWrap.appendChild(tableDiv);
+        floor.appendChild(tableWrap);
+    });
+}
 function positionChair(chair, shape, idx, capacity) {
     if(shape === 'circular') {
         const angle = (idx / capacity) * 2 * Math.PI;
@@ -182,11 +336,208 @@ function positionChair(chair, shape, idx, capacity) {
     }
 }
 
-function selectSeat(el, seat) {
-    document.querySelectorAll('.chair').forEach(c => c.classList.remove('selected'));
-    el.classList.add('selected');
-    selectedSeatObj = seat;
-    document.getElementById('reserve-btn').disabled = false;
+function toggleSeat(seatId) {
+    const idx = seatSelectionState.selectedSeatIds.indexOf(seatId);
+    if (idx >= 0) {
+        seatSelectionState.selectedSeatIds.splice(idx, 1);
+        refreshSeatVisuals();
+        return;
+    }
+
+    if (seatSelectionState.selectedSeatIds.length >= seatSelectionState.guestCount) {
+        alert(`You can select only ${seatSelectionState.guestCount} seats for ${seatSelectionState.guestCount} guests.`);
+        return;
+    }
+
+    seatSelectionState.selectedSeatIds.push(seatId);
+    refreshSeatVisuals();
+}
+
+function autoSelectFromTable(tableNumber) {
+    const table = seatSelectionState.tableByNumber[tableNumber];
+    if (!table) return;
+
+    const remaining = seatSelectionState.guestCount - seatSelectionState.selectedSeatIds.length;
+    if (remaining <= 0) return;
+
+    const freeInTable = table.availableSeats
+        .filter(s => !seatSelectionState.selectedSeatIds.includes(s.id))
+        .sort((a, b) => a.seat_number - b.seat_number);
+
+    if (freeInTable.length === 0) {
+        alert(`No more available seats in Table ${tableNumber}.`);
+        return;
+    }
+
+    const pickCount = Math.min(remaining, freeInTable.length);
+    for (let i = 0; i < pickCount; i++) {
+        seatSelectionState.selectedSeatIds.push(freeInTable[i].id);
+    }
+
+    refreshSeatVisuals();
+}
+
+function refreshSeatVisuals() {
+    Object.keys(seatSelectionState.chairBySeatId).forEach(seatIdStr => {
+        const seatId = Number(seatIdStr);
+        const chair = seatSelectionState.chairBySeatId[seatId];
+        chair.classList.remove('selected');
+        delete chair.dataset.order;
+    });
+
+    seatSelectionState.selectedSeatIds.forEach((seatId, index) => {
+        const chair = seatSelectionState.chairBySeatId[seatId];
+        if (!chair) return;
+        chair.classList.add('selected');
+        chair.dataset.order = String(index + 1);
+    });
+
+    highlightActiveTables();
+    updateSelectionSummary();
+}
+
+function highlightActiveTables() {
+    Object.keys(seatSelectionState.tableElsByNumber).forEach(tNum => {
+        const el = seatSelectionState.tableElsByNumber[tNum];
+        el.classList.remove('table-has-selection');
+    });
+
+    const tablesWithSelection = new Set();
+    seatSelectionState.selectedSeatIds.forEach(seatId => {
+        const seat = seatSelectionState.seatById[seatId];
+        if (seat) tablesWithSelection.add(String(seat.table_number));
+    });
+
+    tablesWithSelection.forEach(tableNumber => {
+        const el = seatSelectionState.tableElsByNumber[tableNumber];
+        if (el) el.classList.add('table-has-selection');
+    });
+}
+
+function updateSelectionSummary() {
+    const targetEl = document.getElementById('summary-target');
+    const pickedEl = document.getElementById('summary-picked');
+    const hintEl = document.getElementById('selection-hint');
+    const tagsEl = document.getElementById('selected-seat-tags');
+    const reserveBtn = document.getElementById('reserve-btn');
+    if (!targetEl || !pickedEl || !hintEl || !tagsEl || !reserveBtn) return;
+
+    const selectedCount = seatSelectionState.selectedSeatIds.length;
+    targetEl.textContent = `Guests: ${seatSelectionState.guestCount}`;
+    pickedEl.textContent = `Selected: ${selectedCount}`;
+
+    if (selectedCount === 0) {
+        hintEl.textContent = 'Select seats manually, or use “Pick from this table”.';
+    } else if (selectedCount < seatSelectionState.guestCount) {
+        hintEl.textContent = `Pick ${seatSelectionState.guestCount - selectedCount} more seat(s).`;
+    } else {
+        hintEl.textContent = 'Perfect. Your selection matches your guest count.';
+    }
+
+    tagsEl.innerHTML = '';
+    seatSelectionState.selectedSeatIds.forEach((seatId, idx) => {
+        const seat = seatSelectionState.seatById[seatId];
+        if (!seat) return;
+        const tag = document.createElement('span');
+        tag.className = 'seat-tag';
+        tag.textContent = `${idx + 1}. T${seat.table_number}-S${seat.seat_number}`;
+        tagsEl.appendChild(tag);
+    });
+
+    reserveBtn.disabled = selectedCount !== seatSelectionState.guestCount;
+}
+
+function getBestTableOptions() {
+    const need = seatSelectionState.guestCount;
+    const allTables = Object.values(seatSelectionState.tableByNumber);
+    const singleTableOptions = allTables
+        .filter(t => t.availableSeats.length >= need)
+        .sort((a, b) => {
+            const diffA = a.availableSeats.length - need;
+            const diffB = b.availableSeats.length - need;
+            if (diffA !== diffB) return diffA - diffB;
+            return a.tableNumber - b.tableNumber;
+        })
+        .slice(0, 2);
+
+    let comboOption = null;
+    if (singleTableOptions.length === 0) {
+        const pairs = [];
+        for (let i = 0; i < allTables.length; i++) {
+            for (let j = i + 1; j < allTables.length; j++) {
+                const left = allTables[i];
+                const right = allTables[j];
+                const total = left.availableSeats.length + right.availableSeats.length;
+                if (total >= need) {
+                    pairs.push({
+                        left,
+                        right,
+                        total,
+                        waste: total - need
+                    });
+                }
+            }
+        }
+
+        pairs.sort((a, b) => {
+            if (a.waste !== b.waste) return a.waste - b.waste;
+            return (a.left.tableNumber + a.right.tableNumber) - (b.left.tableNumber + b.right.tableNumber);
+        });
+
+        comboOption = pairs[0] || null;
+    }
+
+    return {
+        singleTableOptions,
+        comboOption
+    };
+}
+
+function renderRecommendationPanel() {
+    const panel = document.getElementById('recommendation-panel');
+    if (!panel) return;
+
+    const options = getBestTableOptions();
+    const need = seatSelectionState.guestCount;
+    panel.innerHTML = '';
+
+    if (options.singleTableOptions.length > 0) {
+        const head = document.createElement('div');
+        head.className = 'recommendation-head';
+        head.textContent = `Best table options for ${need} guest(s):`;
+        panel.appendChild(head);
+
+        options.singleTableOptions.forEach(table => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'table-suggestion-card';
+            card.textContent = `Table ${table.tableNumber} (${table.availableSeats.length} seats available)`;
+            card.onclick = () => autoSelectFromTable(table.tableNumber);
+            panel.appendChild(card);
+        });
+        return;
+    }
+
+    if (options.comboOption) {
+        const combo = options.comboOption;
+        const head = document.createElement('div');
+        head.className = 'recommendation-head';
+        head.textContent = `No single table fits ${need} guests. Combine these two tables:`;
+        panel.appendChild(head);
+
+        const card = document.createElement('button');
+        card.type = 'button';
+        card.className = 'table-suggestion-card combo';
+        card.textContent = `Table ${combo.left.tableNumber} + Table ${combo.right.tableNumber} (${combo.total} seats available)`;
+        card.onclick = () => {
+            autoSelectFromTable(combo.left.tableNumber);
+            autoSelectFromTable(combo.right.tableNumber);
+        };
+        panel.appendChild(card);
+        return;
+    }
+
+    panel.innerHTML = `<div class="recommendation-head">Only ${Object.values(seatSelectionState.seatById).filter(s => s.isAvailable).length} seats are available. Please reduce guests or choose another time slot.</div>`;
 }
 
 function showReserveModal() {
@@ -194,16 +545,97 @@ function showReserveModal() {
     modal.show();
 }
 
+async function postBookingRequest(payload) {
+    return fetch(`${API_BASE_URL}/book`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+}
+
+async function parseJsonSafe(response) {
+    try {
+        return await response.json();
+    } catch (error) {
+        console.error('Failed to parse JSON response', error);
+        return {};
+    }
+}
+
+function validateReservationInputs(state, name, phone) {
+    if(!name || !phone) {
+        alert('Name and Phone are required');
+        return false;
+    }
+    if(!state.date || !state.time_slot || !state.hotel_id) {
+        alert('Booking details are missing. Please choose date/time again from the booking page.');
+        return false;
+    }
+    if(seatSelectionState.selectedSeatIds.length !== seatSelectionState.guestCount) {
+        alert(`Please select exactly ${seatSelectionState.guestCount} seats.`);
+        return false;
+    }
+    return true;
+}
+
+async function bookSeatsIndividually(basePayload, seatIds) {
+    let bookedCount = 0;
+    for (const seatId of seatIds) {
+        const singlePayload = {
+            ...basePayload,
+            seat_id: seatId,
+            seat_ids: [seatId]
+        };
+        const response = await postBookingRequest(singlePayload);
+        if (!response.ok) {
+            const errorBody = await parseJsonSafe(response);
+            return {
+                ok: false,
+                message: errorBody.message || 'Error booking seat'
+            };
+        }
+        bookedCount++;
+    }
+
+    return { ok: true, bookedCount };
+}
+
+async function handlePrimaryBooking(payload, selectedSeatIds) {
+    const initialRes = await postBookingRequest(payload);
+    const initialBody = await parseJsonSafe(initialRes);
+
+    if (initialRes.ok) {
+        const initialCount = Number(initialBody.booked_seat_count) || 0;
+
+        if (selectedSeatIds.length > 1 && initialCount === 0) {
+            const remainingSeatIds = selectedSeatIds.slice(1);
+            const fallbackResult = await bookSeatsIndividually(payload, remainingSeatIds);
+            if (!fallbackResult.ok) return fallbackResult;
+            return { ok: true, bookedCount: 1 + fallbackResult.bookedCount };
+        }
+
+        return { ok: true, bookedCount: initialCount || 1 };
+    }
+
+    const fallbackMessages = ['Missing required fields', 'Seat already booked'];
+    if (!fallbackMessages.includes(initialBody.message)) {
+        return { ok: false, message: initialBody.message || 'Error booking seat' };
+    }
+
+    return bookSeatsIndividually(payload, selectedSeatIds);
+}
+
 async function confirmReservation() {
     const state = getBookingState();
     const name = document.getElementById('c-name').value;
     const phone = document.getElementById('c-phone').value;
     const req = document.getElementById('c-req').value;
-    
-    if(!name || !phone) return alert("Name and Phone are required");
+
+    if (!validateReservationInputs(state, name, phone)) return;
 
     const payload = {
-        seat_id: selectedSeatObj.id,
+        seat_id: seatSelectionState.selectedSeatIds[0],
+        seat_ids: seatSelectionState.selectedSeatIds,
         customer_name: name,
         phone_number: phone,
         special_request: req,
@@ -211,18 +643,20 @@ async function confirmReservation() {
         time_slot: state.time_slot
     };
 
-    const res = await fetch(`${API_BASE_URL}/book`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
-    });
+    const bookingResult = await handlePrimaryBooking(payload, seatSelectionState.selectedSeatIds);
+    if (!bookingResult.ok) {
+        alert(bookingResult.message || 'Error booking seat');
+        return;
+    }
 
-    if(res.ok) {
+    const bookedCount = bookingResult.bookedCount || 0;
+
+    if (bookedCount === seatSelectionState.selectedSeatIds.length || seatSelectionState.selectedSeatIds.length === 1) {
         alert("Reservation Confirmed!");
         location.href = 'history.html';
     } else {
-        const e = await res.json();
-        alert(e.message);
+        alert('Reservation partially completed. Please check bookings history.');
+        location.href = 'history.html';
     }
 }
 
@@ -244,26 +678,68 @@ async function fetchHistory(e) {
         div.innerHTML = '<p class="text-center mt-4">No reservations found.</p>';
         return;
     }
-    
+
+    const grouped = {};
     data.forEach(r => {
+        const key = [r.hotel_name, r.location, r.date, r.time_slot, r.customer_name, r.phone_number].join('|');
+        if (!grouped[key]) {
+            grouped[key] = {
+                ...r,
+                seatRows: [],
+                reservationIds: []
+            };
+        }
+        grouped[key].seatRows.push(r);
+        grouped[key].reservationIds.push(r.id);
+    });
+
+    Object.values(grouped).forEach(group => {
+        const seatsByTable = {};
+        group.seatRows.forEach(row => {
+            if (!seatsByTable[row.table_number]) seatsByTable[row.table_number] = [];
+            seatsByTable[row.table_number].push(row.seat_number);
+        });
+
+        const tableSeatText = Object.keys(seatsByTable)
+            .sort((a, b) => Number(a) - Number(b))
+            .map(tableNum => {
+                const seats = seatsByTable[tableNum]
+                    .sort((a, b) => a - b)
+                    .map(seatNum => `S${seatNum}`)
+                    .join(', ');
+                return `T${tableNum}/${seats}`;
+            })
+            .join(' | ');
+
+        const guestCount = group.seatRows.length;
+        const reservationIds = [...new Set(group.reservationIds)].filter(Boolean);
+        const reservationIdsArg = reservationIds.join(',');
+
         div.innerHTML += `
             <div class="card mb-3">
                 <div class="card-body">
-                    <h5 class="fw-bold" style="color:var(--primary-color)">${r.hotel_name}</h5>
-                    <p class="mb-2 text-muted small">${r.location}</p>
+                    <h5 class="fw-bold" style="color:var(--primary-color)">${group.hotel_name}</h5>
+                    <p class="mb-2 text-muted small">${group.location}</p>
                     <div class="d-flex justify-content-between bg-light p-2 rounded">
                         <div>
                             <div class="small text-muted">Date</div>
-                            <strong>${r.date}</strong>
+                            <strong>${group.date}</strong>
                         </div>
                         <div>
                             <div class="small text-muted">Time Slot</div>
-                            <strong class="text-capitalize">${r.time_slot}</strong>
+                            <strong>${formatBookingTimeForDisplay(group.time_slot)}</strong>
+                        </div>
+                        <div>
+                            <div class="small text-muted">Guests</div>
+                            <strong>${guestCount}</strong>
                         </div>
                         <div class="text-end">
-                            <div class="small text-muted">Table / Seat</div>
-                            <strong>T${r.table_number} / S${r.seat_number}</strong>
+                            <div class="small text-muted">Table / Seats</div>
+                            <strong>${tableSeatText}</strong>
                         </div>
+                    </div>
+                    <div class="mt-3 text-end">
+                        <button type="button" class="btn-outline-inline" onclick="cancelReservation([${reservationIdsArg}])">Cancel Reservation</button>
                     </div>
                 </div>
             </div>
@@ -271,8 +747,35 @@ async function fetchHistory(e) {
     });
 }
 
+async function cancelReservation(reservationIds) {
+    if (!Array.isArray(reservationIds) || reservationIds.length === 0) {
+        return alert('Unable to cancel this reservation.');
+    }
+
+    const confirmed = confirm('Are you sure you want to cancel this reservation?');
+    if (!confirmed) return;
+
+    const res = await fetch(`${API_BASE_URL}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reservation_ids: reservationIds })
+    });
+
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        const apiMessage = body.message || '';
+        const extra = res.status === 404
+            ? ' Cancel API not found. Please restart backend server to load latest routes.'
+            : '';
+        return alert(`${apiMessage || 'Failed to cancel reservation'} (HTTP ${res.status}).${extra}`);
+    }
+
+    alert('Reservation cancelled successfully.');
+    await fetchHistory({ preventDefault: () => {} });
+}
+
 function initBackNav() {
-    const path = window.location.pathname.toLowerCase();
+    const path = globalThis.location.pathname.toLowerCase();
     if (path.endsWith('index.html') || path.endsWith('/')) {
         return;
     }
@@ -284,10 +787,10 @@ function initBackNav() {
     backBtn.textContent = '←';
     backBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        if (window.history.length > 1) {
-            window.history.back();
+        if (globalThis.history.length > 1) {
+            globalThis.history.back();
         } else {
-            window.location.href = 'index.html';
+            globalThis.location.href = 'index.html';
         }
     });
     document.body.appendChild(backBtn);
