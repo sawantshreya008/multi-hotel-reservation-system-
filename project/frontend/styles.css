@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Poppins:wght@300;400;500;600;700&display=swap');
 
 :root {
     --bg-color: linear-gradient(135deg, #0f0f0f, #1a1f16, #1c2b22, #2a2a2a);
@@ -467,6 +467,12 @@ body {
     background: var(--primary-color) !important;
     transform: scale(1.1);
     box-shadow: 0 0 10px rgba(212,175,55,0.45);
+}
+
+/* Custom font for restaurant names */
+.hotel-card-body h5,
+#hotel-name {
+    font-family: 'Playfair Display', serif;
 }
 
 /* Global overrides for bootstrap utility colors */

@@ -1,3 +1,5 @@
+const API_BASE_URL = 'http://localhost:3000/api';
+
 // Utility to parse URL params
 function getQueryParams() {
     const params = new URLSearchParams(window.location.search);
@@ -48,6 +50,10 @@ async function initIndex() {
         });
     } catch(e) {
         console.error("DB Not connected", e);
+        const container = document.getElementById('hotels-list');
+        if (container) {
+            container.innerHTML = '<div class="text-center mt-5 text-danger fw-bold">Unable to load hotels. Make sure backend is running on http://localhost:3000.</div>';
+        }
     }
 }
 
@@ -74,7 +80,7 @@ async function initHotel() {
         document.getElementById('hotel-name').textContent = h.name;
         document.getElementById('hotel-location').textContent = h.location;
         document.getElementById('hotel-rating').textContent = h.rating;
-        document.getElementById('hotel-desc').textContent = h.description;
+        document.getElementById('hotel-desc').innerHTML = h.description.replace(/\\n/g, '<br />');
         
         saveBookingState({ hotel_id: h.id, hotel_name: h.name });
 
